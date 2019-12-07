@@ -1,0 +1,295 @@
+#!/bin/bash
+
+clear && printf '\e[3J' && printf '\033[0;0H'
+
+osascript -e "tell application \"Terminal\" to set the font size of window 1 to 12"
+osascript -e "tell application \"Terminal\" to set background color of window 1 to {1028, 12850, 10240}"
+osascript -e "tell application \"Terminal\" to set normal text color of window 1 to {65535, 65535, 65535}"
+
+
+lines=24
+printf '\e[8;'${lines}';80t' && printf '\e[3J' && printf "\033[0;0H"
+
+printf "\033[?25l"
+
+if [[ $loc = "ru" ]]; then
+printf '\e[2m************ \e[0m\e[36mПрограмма управления сервисом AppleGVA Debug Checker\e[0m\e[2m *************\e[0m\n'
+else
+printf '\e[2m************ \e[0m\e[36m AppleGVA Debug Checker Service Management Program  \e[0m\e[2m *************\e[0m\n'
+fi
+
+cd "$(dirname "$0")"
+
+if [[ ! -d ~/Library/LaunchAgents ]]; then mkdir ~/Library/LaunchAgents; fi
+
+loc=`defaults read -g AppleLocale | cut -d "_" -f1`
+if [[ ! $loc = "ru" ]]; then loc="en"; fi 
+
+EXIT_PROGRAM(){
+################################## очистка на выходе #############################################################
+if [[ -f ~/.bash_history ]]; then cat  ~/.bash_history | sed -n '/AppleGVADetector/!p' >> ~/new_hist.txt; rm ~/.bash_history; mv ~/new_hist.txt ~/.bash_history ; fi
+if [[ -f ~/.zsh_history ]]; then cat  ~/.zsh_history | sed -n '/AppleGVADetector/!p' >> ~/new_hist.txt; rm ~/.zsh_history; mv ~/new_hist.txt ~/.zsh_history ; fi
+#####################################################################################################################
+
+     osascript -e 'tell application "Terminal" to close first window' & exit
+}
+
+
+
+CLEAR_PLACE(){
+
+                    printf "\033[H"
+                    printf "\033['$free_lines';0f"
+                    printf ' %.0s' {1..80}
+                    printf ' %.0s' {1..80}
+                    printf ' %.0s' {1..80}
+                    printf ' %.0s' {1..80}
+                    printf ' %.0s' {1..80}
+                    printf ' %.0s' {1..80}
+                    printf ' %.0s' {1..80}
+                    printf ' %.0s' {1..80}
+                    printf ' %.0s' {1..80}
+                    printf '\r\033[9A'
+
+}
+
+SET_INPUT(){
+
+if [[ -f ~/Library/Preferences/com.apple.HIToolbox.plist ]]; then
+    declare -a layouts_names
+    layouts=$(defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleInputSourceHistory | egrep -w 'KeyboardLayout Name' | sed -E 's/.+ = "?([^"]+)"?;/\1/' | tr  '\n' ';')
+    IFS=";"; layouts_names=($layouts); unset IFS; num=${#layouts_names[@]}
+    keyboard="0"
+
+    for ((i=0;i<$num;i++)); do
+        case ${layouts_names[i]} in
+    "ABC"                ) keyboard=${layouts_names[i]}; break ;;
+    "US Extended"        ) keyboard="USExtended"; break ;;
+    "USInternational-PC" ) keyboard=${layouts_names[i]}; break ;;
+    "U.S."               ) keyboard="US"; break ;;
+    "British"            ) keyboard=${layouts_names[i]}; break ;;
+    "British-PC"         ) keyboard=${layouts_names[i]}; break ;;
+    esac 
+    done
+
+    if [[ ! $i = 0 ]]; then 
+       cd "$(dirname "$0")"
+        if [[ ! $keyboard = "0" ]] && [[ -f "tools/xkbswitch" ]]; then tools/xkbswitch -se $keyboard; fi
+            
+    fi
+     
+fi
+
+}
+
+GET_INPUT(){
+unset inputs
+while [[ ! ${inputs} =~ ^[0-4qQa]+$ ]]; do
+printf "\033[?25l"
+if [[ $loc = "ru" ]]; then             
+printf '  Введите символ от \e[1;33m1\e[0m до \e[1;36m4\e[0m, (или \e[1;35mQ\e[0m - выход ):   ' ; printf '                             '
+else
+printf '  Enter a number from \e[1;33m1\e[0m to \e[1;36m4\e[0m, (or \e[1;35mQ\e[0m - exit ):  ' ; printf '                            '
+fi			
+printf "%"80"s"'\n'"%"80"s"'\n'"%"80"s"'\n'"%"80"s"
+printf "\033[4A"
+printf "\r\033[46C"
+printf "\033[?25h"
+SET_INPUT
+read -rsn1 -t1 inputs 
+printf "\r"
+done
+printf "\033[?25l"
+
+}
+
+CHECK_AppleGVADetector(){
+
+if [[ $loc = "ru" ]]; then
+if [[ $(launchctl list | grep "AppleGVADetector.job" | cut -f3 | grep -x "AppleGVADetector.job") ]]; then  rs_lan="работает"
+        else
+if [[ ! -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then rs_lan="не установлен"
+            else
+                 rs_lan="остановлен"
+        fi
+fi
+else
+if [[ $(launchctl list | grep "AppleGVADetector.job" | cut -f3 | grep -x "AppleGVADetector.job") ]]; then  rs_lan="started"
+        else
+if [[ ! -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then rs_lan="not installed"
+            else
+                 rs_lan="stopped"
+        fi
+fi
+fi
+}
+
+SHOW_MENU(){
+
+CHECK_AppleGVADetector
+
+free_lines=16
+
+printf '\e[8;'${lines}';80t' && printf '\e[3J' && printf "\033[0;0H"
+if [[ $loc = "ru" ]]; then
+printf '\e[2m************ \e[0m\e[36mПрограмма управления сервисом AppleGVA Debug Checker\e[0m\e[2m *************\e[0m\n'
+else
+printf '\e[2m************ \e[0m\e[36m AppleGVA Debug Checker Service Management Program  \e[0m\e[2m *************\e[0m\n'
+fi
+printf ' %.0s' {1..80}
+printf '.%.0s' {1..80}
+printf ' %.0s' {1..80}
+if [[ $loc = "ru" ]]; then
+        if [[ $rs_lan = "работает" ]]; then
+        printf '               \e[1;32m     Сервис \e[0mAppleGVA Debug Checker  \e[1;32m'"$rs_lan"'\e[0m          \n'
+        else
+        printf '               \e[1;33m     Сервис \e[0mAppleGVA Debug Checker  \e[1;33m'"$rs_lan"'\e[0m          \n'
+        fi
+else
+        if [[ $rs_lan = "started" ]]; then
+        printf '               \e[1;32m     Service \e[0mAppleGVA Debug Checker  \e[1;32m'"$rs_lan"'\e[0m         \n'
+        else
+        printf '               \e[1;33m     Service \e[0mAppleGVA Debug Checker  \e[1;33m'"$rs_lan"'\e[0m         \n'
+        fi
+fi
+printf ' %.0s' {1..80}
+printf '.%.0s' {1..80}
+printf '\n'
+printf ' %.0s' {1..80}
+if [[ $loc = "ru" ]]; then
+    printf '          \e[1;33m1.\e[0m Установить сервис AppleGVA Debug Checker    \n'
+    printf '          \e[1;33m2.\e[0m Остановить                   \n'
+    printf '          \e[1;33m3.\e[0m Запустить                 \n'
+    printf '          \e[1;33m4.\e[0m Удалить сервис AppleGVA Debug Checker       \n'   
+    printf '          \e[1;35mQ.\e[0m Выйти из программы настройки       \n'
+else
+    printf '          \e[1;33m1.\e[0m Install AppleGVA Debug Checker service      \n'
+    printf '          \e[1;33m2.\e[0m Stop the service                            \n'
+    printf '          \e[1;33m3.\e[0m Start the service                           \n'
+    printf '          \e[1;33m4.\e[0m Remove AppleGVA Debug Checker service       \n'
+    printf '          \e[1;35mQ.\e[0m Exit the program                   \n'
+fi
+printf ' %.0s' {1..80}
+}
+
+
+
+######################################## MAIN ##########################################################################################
+free_lines=7
+var4=0
+while [[ ! $var4 = 1 ]] 
+do
+printf '\e[3J' && printf "\033[0;0H" 
+printf "\033[?25l"
+SHOW_MENU
+#SET_INPUT
+GET_INPUT
+
+if [[ $inputs = 1 ]]; then
+            CLEAR_PLACE
+            CHECK_AppleGVADetector
+ if [[ $loc = "ru" ]]; then
+            if [[ ! $rs_lan = "остановлен" ]] || [[ ! $rs_lan = "работает" ]]; then
+            if [[ -f tools/AppleGVADetector.plist ]] && [[ -f tools/AppleGVADetector.sh ]] && [[ -d tools/NVidia/terminal-notifier.app ]] && [[ -d tools/Ati/terminal-notifier.app ]] && [[ -d tools/Intel/terminal-notifier.app ]]; then
+                if [[ ! -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then cp -a tools/AppleGVADetector.plist ~/Library/LaunchAgents; fi
+                plutil -remove ProgramArguments.0 ~/Library/LaunchAgents/AppleGVADetector.plist
+                plutil -insert ProgramArguments.0 -string "/Users/$(whoami)/.AppleGVADetector.sh" ~/Library/LaunchAgents/AppleGVADetector.plist
+                if [[ ! -f ~/.AppleGVADetector.sh ]]; then cp -a tools/AppleGVADetector.sh ~/.AppleGVADetector.sh; chmod u+x ~/.AppleGVADetector.sh; fi
+                if [[ ! $rs_lan = "работает" ]]; then launchctl load -w ~/Library/LaunchAgents/AppleGVADetector.plist; fi
+                if [[ ! -d ~/Library/Application\ Support/AppleGVADetector ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector; fi
+                if [[ ! -d ~/Library/Application\ Support/AppleGVADetector/ATI ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector/ATI; fi
+                if [[ ! -d ~/Library/Application\ Support/AppleGVADetector/NVIDIA ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector/NVIDIA; fi
+                if [[ ! -d ~/Library/Application\ Support/AppleGVADetector/INTEL ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector/INTEL; fi
+                cp -a tools/Ati/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/ATI
+                cp -a tools/NVidia/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/NVIDIA
+                cp -a tools/Intel/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/INTEL
+           else
+                printf '\n   Не найдены файлы для установки. Поместите их в папку tools с установщиком\n'
+                printf '\n'
+        
+          fi
+    fi
+            
+ else
+            if [[ ! $rs_lan = "stopped" ]] || [[ ! $rs_lan = "started" ]]; then
+            if [[ -f tools/AppleGVADetector.plist ]] && [[ -f tools/AppleGVADetector.sh ]] && [[ -d tools/NVidia/terminal-notifier.app ]] && [[ -d tools/Ati/terminal-notifier.app ]] && [[ -d tools/Intel/terminal-notifier.app ]]; then
+                if [[ ! -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then cp -a tools/AppleGVADetector.plist ~/Library/LaunchAgents; fi
+                plutil -remove ProgramArguments.0 ~/Library/LaunchAgents/AppleGVADetector.plist
+                plutil -insert ProgramArguments.0 -string "/Users/$(whoami)/.AppleGVADetector.sh" ~/Library/LaunchAgents/AppleGVADetector.plist
+                if [[ ! -f ~/.AppleGVADetector.sh ]]; then cp -a tools/AppleGVADetector.sh ~/.AppleGVADetector.sh; chmod u+x ~/.AppleGVADetector.sh; fi
+                if [[ ! $rs_lan = "started" ]]; then launchctl load -w ~/Library/LaunchAgents/AppleGVADetector.plist; fi
+                if [[ ! -d ~/Library/Application\ Support/AppleGVADetector ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector; fi
+                if [[ ! -d ~/Library/Application\ Support/AppleGVADetector/ATI ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector/ATI; fi
+                if [[ ! -d ~/Library/Application\ Support/AppleGVADetector/NVIDIA ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector/NVIDIA; fi
+                if [[ ! -d ~/Library/Application\ Support/AppleGVADetector/INTEL ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector/INTEL; fi
+                cp -a tools/Ati/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/Ati
+                cp -a tools/NVidia/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/NVidia
+                cp -a tools/Intel/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/Intel
+           else
+                printf '\n   No installation files found. Put them in the installer tools folder      \n'
+                printf '\n'
+        
+          fi
+    fi
+ fi
+
+read -n 1 -t 1
+CLEAR_PLACE
+fi
+
+
+if [[ $inputs = 2 ]]; then
+    CHECK_AppleGVADetector
+    if [[ $loc = "ru" ]]; then
+        if [[ $rs_lan = "работает" ]]; then
+        if [[ -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then
+            launchctl unload -w ~/Library/LaunchAgents/AppleGVADetector.plist; fi
+        fi
+    else
+        if [[ $rs_lan = "started" ]]; then
+        if [[ -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then
+            launchctl unload -w ~/Library/LaunchAgents/AppleGVADetector.plist; fi
+        fi
+    fi
+    CLEAR_PLACE
+fi
+
+if [[ $inputs = 3 ]]; then
+     CHECK_AppleGVADetector
+    if [[ $loc = "ru" ]]; then
+        if [[ $rs_lan = "остановлен" ]]; then
+        if [[ -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then
+            launchctl load -w ~/Library/LaunchAgents/AppleGVADetector.plist; fi
+        fi
+     else
+        if [[ $rs_lan = "stopped" ]]; then
+        if [[ -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then
+            launchctl load -w ~/Library/LaunchAgents/AppleGVADetector.plist; fi
+        fi
+    fi
+    CLEAR_PLACE
+fi
+
+if [[ $inputs = 4 ]]; then
+    CHECK_AppleGVADetector
+    if [[ $(launchctl list | grep "AppleGVADetector.job" | cut -f3 | grep -x "AppleGVADetector.job") ]]; then launchctl unload -w ~/Library/LaunchAgents/AppleGVADetector.plist 2>/dev/null; fi
+    if [[ -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then rm ~/Library/LaunchAgents/AppleGVADetector.plist; fi
+    if [[ -f ~/.AppleGVADetector.sh ]]; then rm ~/.AppleGVADetector.sh; fi
+    rm -Rf  ~/Library/Application\ Support/AppleGVADetector
+    read -n 1 -t 1
+    CLEAR_PLACE
+fi
+
+if [[ $inputs = [qQ] ]]; then var4=1; fi
+
+done
+
+clear
+
+EXIT_PROGRAM
+
+
+
+
+
+
