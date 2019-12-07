@@ -1,0 +1,23 @@
+#!/bin/bash
+
+osascript -e 'tell application "Terminal" to  set current settings of window 1 to settings set "Ocean"'
+
+
+#osascript -e "tell application \"Terminal\" to set the font size of window 1 to 12"
+#osascript -e "tell application \"Terminal\" to set background color of window 1 to {1028, 12850, 10240}"
+#osascript -e "tell application \"Terminal\" to set normal text color of window 1 to {65535, 65535, 65535}"
+
+clear && printf '\e[3J' && printf '\033[0;0H'
+
+if [[ ! -f ~/Library/Application\ Support/AppleGVADetector/debug_on.txt ]]; then rm -f ~/Library/Application\ Support/AppleGVADetector/debug_on.txt; fi
+
+gva_debug=$( defaults read com.apple.AppleGVA enableSyslog 2>/dev/null )
+if [[ ! $gva_debug = 1 ]]; then defaults write com.apple.AppleGVA enableSyslog -boolean true
+    else 
+        if [[ ! -d ~/Library/Application\ Support/AppleGVADetector ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector; fi
+        touch ~/Library/Application\ Support/AppleGVADetector/debug_on.txt
+ fi
+
+log stream --style compact --predicate 'eventMessage CONTAINS "GVA"'
+
+exit

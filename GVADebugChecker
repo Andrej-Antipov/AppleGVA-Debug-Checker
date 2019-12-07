@@ -7,7 +7,7 @@ osascript -e "tell application \"Terminal\" to set background color of window 1 
 osascript -e "tell application \"Terminal\" to set normal text color of window 1 to {65535, 65535, 65535}"
 
 
-lines=24
+lines=26
 printf '\e[8;'${lines}';80t' && printf '\e[3J' && printf "\033[0;0H"
 
 printf "\033[?25l"
@@ -27,8 +27,8 @@ if [[ ! $loc = "ru" ]]; then loc="en"; fi
 
 EXIT_PROGRAM(){
 ################################## очистка на выходе #############################################################
-if [[ -f ~/.bash_history ]]; then cat  ~/.bash_history | sed -n '/AppleGVADetector/!p' >> ~/new_hist.txt; rm ~/.bash_history; mv ~/new_hist.txt ~/.bash_history ; fi
-if [[ -f ~/.zsh_history ]]; then cat  ~/.zsh_history | sed -n '/AppleGVADetector/!p' >> ~/new_hist.txt; rm ~/.zsh_history; mv ~/new_hist.txt ~/.zsh_history ; fi
+if [[ -f ~/.bash_history ]]; then cat  ~/.bash_history | sed -n '/GVADebugChecker/!p' >> ~/new_hist.txt; rm ~/.bash_history; mv ~/new_hist.txt ~/.bash_history ; fi
+if [[ -f ~/.zsh_history ]]; then cat  ~/.zsh_history | sed -n '/GVADebugChecker/!p' >> ~/new_hist.txt; rm ~/.zsh_history; mv ~/new_hist.txt ~/.zsh_history ; fi
 #####################################################################################################################
 
      osascript -e 'tell application "Terminal" to close first window' & exit
@@ -84,7 +84,8 @@ fi
 
 GET_INPUT(){
 unset inputs
-while [[ ! ${inputs} =~ ^[0-4qQa]+$ ]]; do
+SET_INPUT
+while [[ ! ${inputs} =~ ^[0-6qQa]+$ ]]; do
 printf "\033[?25l"
 if [[ $loc = "ru" ]]; then             
 printf '  Введите символ от \e[1;33m1\e[0m до \e[1;36m4\e[0m, (или \e[1;35mQ\e[0m - выход ):   ' ; printf '                             '
@@ -95,7 +96,6 @@ printf "%"80"s"'\n'"%"80"s"'\n'"%"80"s"'\n'"%"80"s"
 printf "\033[4A"
 printf "\r\033[46C"
 printf "\033[?25h"
-SET_INPUT
 read -rsn1 -t1 inputs 
 printf "\r"
 done
@@ -128,7 +128,7 @@ SHOW_MENU(){
 
 CHECK_AppleGVADetector
 
-free_lines=16
+free_lines=18
 
 printf '\e[8;'${lines}';80t' && printf '\e[3J' && printf "\033[0;0H"
 if [[ $loc = "ru" ]]; then
@@ -158,24 +158,32 @@ printf '\n'
 printf ' %.0s' {1..80}
 if [[ $loc = "ru" ]]; then
     printf '          \e[1;33m1.\e[0m Установить сервис AppleGVA Debug Checker    \n'
-    printf '          \e[1;33m2.\e[0m Остановить                   \n'
-    printf '          \e[1;33m3.\e[0m Запустить                 \n'
-    printf '          \e[1;33m4.\e[0m Удалить сервис AppleGVA Debug Checker       \n'   
+    printf '          \e[1;33m2.\e[0m Остановить сервис                  \n'
+    printf '          \e[1;33m3.\e[0m Запустить сервис                \n'
+    printf '          \e[1;33m4.\e[0m Удалить сервис AppleGVA Debug Checker       \n'
+    printf '          \e[1;36m5.\e[0m Вызвать  окно отладки                       \n'
+    printf '          \e[1;36m6.\e[0m Убрать окно отладки                         \n'   
     printf '          \e[1;35mQ.\e[0m Выйти из программы настройки       \n'
 else
     printf '          \e[1;33m1.\e[0m Install AppleGVA Debug Checker service      \n'
     printf '          \e[1;33m2.\e[0m Stop the service                            \n'
     printf '          \e[1;33m3.\e[0m Start the service                           \n'
     printf '          \e[1;33m4.\e[0m Remove AppleGVA Debug Checker service       \n'
+    printf '          \e[1;36m5.\e[0m Create Debug window                         \n'
+    printf '          \e[1;36m6.\e[0m Remove Debug window                         \n' 
     printf '          \e[1;35mQ.\e[0m Exit the program                   \n'
 fi
 printf ' %.0s' {1..80}
 }
 
-
+STOP_GVA_DEBUG(){
+if [[ ! -f ~/Library/Application\ Support/AppleGVADetector/debug_on.txt ]]; then
+defaults delete com.apple.AppleGVA enableSyslog 2>/dev/null
+fi
+}
 
 ######################################## MAIN ##########################################################################################
-free_lines=7
+free_lines=9
 var4=0
 while [[ ! $var4 = 1 ]] 
 do
@@ -272,7 +280,7 @@ fi
 
 if [[ $inputs = 4 ]]; then
     CHECK_AppleGVADetector
-    if [[ $(launchctl list | grep "AppleGVADetector.job" | cut -f3 | grep -x "AppleGVADetector.job") ]]; then launchctl unload -w ~/Library/LaunchAgents/AppleGVADetector.plist 2>/dev/null; fi
+    if [[ $(launchctl list | grep "AppleGVADetector.job" | cut -f3 | grep -x "AppleGVADetector.job") ]]; then launchctl unload -w ~/Library/LaunchAgents/AppleGVADetector.plist 2>/dev/null; STOP_GVA_DEBUG; fi
     if [[ -f ~/Library/LaunchAgents/AppleGVADetector.plist ]]; then rm ~/Library/LaunchAgents/AppleGVADetector.plist; fi
     if [[ -f ~/.AppleGVADetector.sh ]]; then rm ~/.AppleGVADetector.sh; fi
     rm -Rf  ~/Library/Application\ Support/AppleGVADetector
@@ -280,7 +288,22 @@ if [[ $inputs = 4 ]]; then
     CLEAR_PLACE
 fi
 
-if [[ $inputs = [qQ] ]]; then var4=1; fi
+if [[ $inputs = 5 ]]; then open -a "Terminal" tools/DebugWindowMode; fi
+
+if [[ $inputs = 6 ]]; then 
+    kill $(ps  | grep -v grep | grep DebugWindowMode | rev | awk '{print $NF}' | rev) 2>/dev/null
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "DebugWindowMode")' &
+    CHECK_AppleGVADetector
+    if [[ $rs_lan = "не установлен" ]] || [[ $rs_lan = "not installed" ]]; then 
+      STOP_GVA_DEBUG
+      if [[ ! -f ~/Library/Application\ Support/AppleGVADetector/debug_on.txt ]]; then rm -f ~/Library/Application\ Support/AppleGVADetector/debug_on.txt; fi
+    fi    
+fi
+
+if [[ $inputs = [qQ] ]]; then
+    if [[ ! -f ~/Library/Application\ Support/AppleGVADetector/debug_on.txt ]]; then rm -f ~/Library/Application\ Support/AppleGVADetector/debug_on.txt; fi
+    var4=1
+fi
 
 done
 
