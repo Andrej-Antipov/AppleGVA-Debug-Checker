@@ -1,11 +1,7 @@
 #!/bin/bash
 
-osascript -e 'tell application "Terminal" to  set current settings of window 1 to settings set "Ocean"'
-
-
-#osascript -e "tell application \"Terminal\" to set the font size of window 1 to 12"
-#osascript -e "tell application \"Terminal\" to set background color of window 1 to {1028, 12850, 10240}"
-#osascript -e "tell application \"Terminal\" to set normal text color of window 1 to {65535, 65535, 65535}"
+default_profile=$(plutil -p /Users/$(whoami)/Library/Preferences/com.apple.Terminal.plist | grep "Default Window Settings" | tr -d '"' | cut -f2 -d '>' | xargs)
+if [[ "$default_profile" = "Basic" ]]; then osascript -e 'tell application "Terminal" to  set current settings of window 1 to settings set "Ocean"'; fi
 
 clear && printf '\e[3J' && printf '\033[0;0H'
 
