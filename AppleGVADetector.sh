@@ -10,7 +10,7 @@ MESSAGE_HARDWARE(){
         if [[ $loc = "ru" ]]; then
         TITLE="Декодер: ""$decoder"
         SUBTITLE="Клиент: ""$client"
-        MESSAGE="АППАРАТНОЕ ДЕКОДИРОВАНИЕ ВИДЕО"
+        MESSAGE="АППАРАТНОЕ ДЕКОДИРОВАНИЕ"
         DISPLAY_NOTIFICATION &
         else
         TITLE="Декодер ""$decoder"
@@ -18,6 +18,7 @@ MESSAGE_HARDWARE(){
         MESSAGE="HARDWARE VIDEO DECODING"
         DISPLAY_NOTIFICATION &
         fi
+
 }
 
 MESSAGE_SOFTWARE(){
@@ -32,27 +33,31 @@ MESSAGE_SOFTWARE(){
         MESSAGE="SOFTWARE VIDEO DECODING"
         DISPLAY_NOTIFICATION &
         fi
+        sleep 0.5
+     
 }
 
 MESSAGE_ERROR(){
+    
         if [[ $loc = "ru" ]]; then
         TITLE="Декодер: ""$decoder"
         SUBTITLE="Клиент ""$client"
-        MESSAGE="ОШИБКА ДЕКОДЕРА!"
+        MESSAGE="ОШИБКА! ПЕРЕХОД НА ПРОГРАММНЫЙ ДЕКОДEP"
         DISPLAY_NOTIFICATION &
         else
         TITLE="Декодер: ""$decoder"
         SUBTITLE="$client"
-        MESSAGE="DECODING ERROR!"
+        MESSAGE="ERROR! PASS TO SOFTWARE DECODER"
         DISPLAY_NOTIFICATION &
         fi
+        sleep 0.5
 }
 
 # INIT
 gva_debug=$( defaults read com.apple.AppleGVA enableSyslog 2>/dev/null )
 if [[ ! $gva_debug = 1 ]]; then defaults write com.apple.AppleGVA enableSyslog -boolean true ; fi
 
-loc=`defaults read -g AppleLocale | cut -d "_" -f1`; if [[ ! $loc = "ru" ]]; then loc="en"; fi 
+loc=`defaults read -g AppleLocale | cut -d "_" -f1`; if [[ ! $loc = "ru" ]]; then loc="en"; fi
 
 # MAIN
     
