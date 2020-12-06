@@ -15,12 +15,12 @@ printf '\e[8;'${lines}';80t' && printf '\e[3J' && printf "\033[0;0H"
 printf "\033[?25l"
 
 if [[ $loc = "ru" ]]; then
-printf '\e[2m************ \e[0m\e[36mПрограмма управления сервисом AppleGVA Debug Checker\e[0m\e[2m *************\e[0m\n'
+printf '\e[2m********** \e[0m\e[36mПрограмма управления сервисом AppleGVA Debug Checker v1.1\e[0m\e[2m **********\e[0m\n'
 else
-printf '\e[2m************ \e[0m\e[36m AppleGVA Debug Checker Service Management Program  \e[0m\e[2m *************\e[0m\n'
+printf '\e[2m*********** \e[0m\e[36m AppleGVA Debug Checker Service Management Program v1.1 \e[0m\e[2m ***********\e[0m\n'
 fi
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")"; ROOT="$(dirname "$0")/tools"
 
 if [[ ! -d ~/Library/LaunchAgents ]]; then mkdir ~/Library/LaunchAgents; fi
 
@@ -39,13 +39,19 @@ if [[ -f ~/.bash_history ]]; then cat  ~/.bash_history | sed -n '/GVADebugChecke
 if [[ -f ~/.zsh_history ]]; then cat  ~/.zsh_history | sed -n '/GVADebugChecker/!p' >> ~/new_hist.txt; rm ~/.zsh_history; mv ~/new_hist.txt ~/.zsh_history ; fi
 #####################################################################################################################
 CHECK_TTY_COUNT	
-
+kill ${LogPID} 2>/dev/null &
+kill $(ps  | grep -v grep | grep DebugWindowMode | rev | awk '{print $NF}' | rev) 2>/dev/null
+osascript -e 'tell application "Terminal" to close (every window whose name contains "DebugWindowMode")' &
+KILL_LOG_STREAM &
+#STOP_GVA_DEBUG &
 kill $(ps  | grep -v grep | grep GVADebugChecker | rev | awk '{print $NF}' | rev)  2>/dev/null & 
-if [[ ${TTYcount} = 0  ]];then  osascript -e 'tell application "Terminal" to close (every window whose name contains "GVADebugChecker")' && osascript -e 'quit app "terminal.app"' & exit
-else
-   osascript -e 'tell application "Terminal" to close (every window whose name contains "GVADebugChecker")' & exit
- fi
+osascript -e 'tell application "Terminal" to close (every window whose name contains "DebugWindowMode")' &
+if [[ ${TTYcount} = 0  ]];then  
 
+osascript -e 'tell application "Terminal" to close (every window whose name contains "GVADebugChecker")' && osascript -e 'quit app "terminal.app"' & exit
+else
+osascript -e 'tell application "Terminal" to close (every window whose name contains "GVADebugChecker")' & exit
+ fi
 }
 
 
@@ -67,50 +73,37 @@ CLEAR_PLACE(){
 
 }
 
-SET_INPUT(){
 
-if [[ -f ~/Library/Preferences/com.apple.HIToolbox.plist ]]; then
-    declare -a layouts_names
-    layouts=$(defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleInputSourceHistory | egrep -w 'KeyboardLayout Name' | sed -E 's/.+ = "?([^"]+)"?;/\1/' | tr  '\n' ';')
-    IFS=";"; layouts_names=($layouts); unset IFS; num=${#layouts_names[@]}
-    keyboard="0"
-
-    for ((i=0;i<$num;i++)); do
-        case ${layouts_names[i]} in
-    "ABC"                ) keyboard=${layouts_names[i]}; break ;;
-    "US Extended"        ) keyboard="USExtended"; break ;;
-    "USInternational-PC" ) keyboard=${layouts_names[i]}; break ;;
-    "U.S."               ) keyboard="US"; break ;;
-    "British"            ) keyboard=${layouts_names[i]}; break ;;
-    "British-PC"         ) keyboard=${layouts_names[i]}; break ;;
-    esac 
-    done
-
-    if [[ ! $i = 0 ]]; then 
-       cd "$(dirname "$0")"
-        if [[ ! $keyboard = "0" ]] && [[ -f "tools/xkbswitch" ]]; then tools/xkbswitch -se $keyboard; fi
-            
-    fi
-     
-fi
-
+TRANS_READ(){
+   codes=$(echo $inputs | hexdump | head -n1 | cut -f2 -d ' ')
+   for i in d0 d1
+   do
+   if [[ $codes = $i ]]; then
+        read -rsn1 symsym; 
+        codes+=$(echo $symsym | hexdump | head -n1 | cut -f2 -d ' ')
+        code_base=( d18f d0af d0b9 d099 ); sym_base=( q Q q Q )
+        for i in ${!code_base[@]}; do if [[ $codes = ${code_base[i]} ]]; then inputs=${sym_base[i]}; break; fi; done
+        break
+   fi
+   done
 }
+
 
 GET_INPUT(){
 unset inputs
-SET_INPUT
-while [[ ! ${inputs} =~ ^[0-6qQa]+$ ]]; do
+while [[ ! ${inputs} =~ ^[1-6qQ]+$ ]]; do
 printf "\033[?25l"
 if [[ $loc = "ru" ]]; then             
-printf '  Введите символ от \e[1;33m1\e[0m до \e[1;36m4\e[0m, (или \e[1;35mQ\e[0m - выход ):   ' ; printf '                             '
+printf '  Введите символ от \e[1;33m1\e[0m до \e[1;36m6\e[0m, (или \e[1;35mQ\e[0m - выход ):   ' ; printf '                             '
 else
-printf '  Enter a number from \e[1;33m1\e[0m to \e[1;36m4\e[0m, (or \e[1;35mQ\e[0m - exit ):  ' ; printf '                            '
+printf '  Enter a number from \e[1;33m1\e[0m to \e[1;36m6\e[0m, (or \e[1;35mQ\e[0m - exit ):  ' ; printf '                            '
 fi			
 printf "%"80"s"'\n'"%"80"s"'\n'"%"80"s"'\n'"%"80"s"
 printf "\033[4A"
 printf "\r\033[46C"
 printf "\033[?25h"
 read -rsn1 -t1 inputs 
+if [[ ! $inputs = "" ]]; then TRANS_READ; if [[ ! ${inputs} =~ ^[1-6qQ]+$ ]]; then unset inputs; fi; fi
 printf "\r"
 done
 printf "\033[?25l"
@@ -146,9 +139,9 @@ free_lines=18
 
 printf '\e[8;'${lines}';80t' && printf '\e[3J' && printf "\033[0;0H"
 if [[ $loc = "ru" ]]; then
-printf '\e[2m************ \e[0m\e[36mПрограмма управления сервисом AppleGVA Debug Checker\e[0m\e[2m *************\e[0m\n'
+printf '\e[2m********** \e[0m\e[36mПрограмма управления сервисом AppleGVA Debug Checker v1.1\e[0m\e[2m ***********\e[0m\n'
 else
-printf '\e[2m************ \e[0m\e[36m AppleGVA Debug Checker Service Management Program  \e[0m\e[2m *************\e[0m\n'
+printf '\e[2m*********** \e[0m\e[36m AppleGVA Debug Checker Service Management Program v1.1 \e[0m\e[2m ***********\e[0m\n'
 fi
 printf ' %.0s' {1..80}
 printf '.%.0s' {1..80}
@@ -190,21 +183,27 @@ fi
 printf ' %.0s' {1..80}
 }
 
-STOP_GVA_DEBUG(){
-if [[ ! -f ~/Library/Application\ Support/AppleGVADetector/debug_on.txt ]]; then
-defaults delete com.apple.AppleGVA enableSyslog 2>/dev/null
+STOP_GVA_DEBUG(){ if [[ ! -f ~/Library/Application\ Support/AppleGVADetector/debug_on.txt ]]; then defaults delete com.apple.AppleGVA enableSyslog 2>/dev/null; fi; }
+
+KILL_LOG_STREAM(){ for i in  $(ps -xo pid,command | grep -v grep | grep 'eventMessage CONTAINS "GVA"' | awk '{print $1;}'); do if [[ ! $i = ${ServPID} ]]; then kill $i; fi; done; }
+
+CHECK_DECODER(){
+if [[ -f "$ROOT"/VDADecoderChecker ]]; then
+    answ=$("$ROOT"/VDADecoderChecker 2>/dev/null | grep -ow "Hardware acceleration is fully supported") 
+    if [[ $answ = "" ]]; then 
+        if [[ ! $loc = "ru" ]]; then answ="GPU hardware acceleration NOT detected !"; else answ="Аппаратный декодер GPU НЕ поддерживается !"; fi
+        if [[ -d "$ROOT"/terminal-notifier.app ]]; then "$ROOT"/terminal-notifier.app/Contents/MacOS/terminal-notifier -title "TeslaGVADetector" -subtitle "Клиент VDADecoderChecker" -message "${answ}" ; fi
+    fi
 fi
 }
 
 ######################################## MAIN ##########################################################################################
 free_lines=9
 var4=0
-while [[ ! $var4 = 1 ]] 
-do
+while true; do
 printf '\e[3J' && printf "\033[0;0H" 
 printf "\033[?25l"
 SHOW_MENU
-#SET_INPUT
 GET_INPUT
 
 if [[ $inputs = 1 ]]; then
@@ -217,6 +216,7 @@ if [[ $inputs = 1 ]]; then
                 plutil -remove ProgramArguments.0 ~/Library/LaunchAgents/AppleGVADetector.plist
                 plutil -insert ProgramArguments.0 -string "/Users/$(whoami)/.AppleGVADetector.sh" ~/Library/LaunchAgents/AppleGVADetector.plist
                 if [[ ! -f ~/.AppleGVADetector.sh ]]; then cp -a tools/AppleGVADetector.sh ~/.AppleGVADetector.sh; chmod u+x ~/.AppleGVADetector.sh; fi
+               string1=$(ps -xo pid,command | grep -v grep | grep 'eventMessage CONTAINS "GVA"' | awk '{print $1}') 
                 if [[ ! $rs_lan = "работает" ]]; then launchctl load -w ~/Library/LaunchAgents/AppleGVADetector.plist; fi
                 if [[ ! -d ~/Library/Application\ Support/AppleGVADetector ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector; fi
                 if [[ ! -d ~/Library/Application\ Support/AppleGVADetector/ATI ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector/ATI; fi
@@ -225,6 +225,10 @@ if [[ $inputs = 1 ]]; then
                 cp -a tools/Ati/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/ATI
                 cp -a tools/NVidia/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/NVIDIA
                 cp -a tools/Intel/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/INTEL
+              sleep 1
+              string2=$(ps -xo pid,command | grep -v grep | grep 'eventMessage CONTAINS "GVA"' | awk '{print $1}')
+              if [[ "${string1}" = "${string2}" ]]; then ServPID="${string1}"; else ServPID=$(echo ${string1} ${string2} | tr ' ' '\n' | sort | uniq -u ); fi
+              CHECK_DECODER
            else
                 printf '\n   Не найдены файлы для установки. Поместите их в папку tools с установщиком\n'
                 printf '\n'
@@ -239,6 +243,7 @@ if [[ $inputs = 1 ]]; then
                 plutil -remove ProgramArguments.0 ~/Library/LaunchAgents/AppleGVADetector.plist
                 plutil -insert ProgramArguments.0 -string "/Users/$(whoami)/.AppleGVADetector.sh" ~/Library/LaunchAgents/AppleGVADetector.plist
                 if [[ ! -f ~/.AppleGVADetector.sh ]]; then cp -a tools/AppleGVADetector.sh ~/.AppleGVADetector.sh; chmod u+x ~/.AppleGVADetector.sh; fi
+              string1=$(ps -xo pid,command | grep -v grep | grep 'eventMessage CONTAINS "GVA"' | awk '{print $1}') 
                 if [[ ! $rs_lan = "started" ]]; then launchctl load -w ~/Library/LaunchAgents/AppleGVADetector.plist; fi
                 if [[ ! -d ~/Library/Application\ Support/AppleGVADetector ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector; fi
                 if [[ ! -d ~/Library/Application\ Support/AppleGVADetector/ATI ]]; then mkdir  ~/Library/Application\ Support/AppleGVADetector/ATI; fi
@@ -247,6 +252,10 @@ if [[ $inputs = 1 ]]; then
                 cp -a tools/Ati/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/Ati
                 cp -a tools/NVidia/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/NVidia
                 cp -a tools/Intel/terminal-notifier.app ~/Library/Application\ Support/AppleGVADetector/Intel
+              sleep 1
+              string2=$(ps -xo pid,command | grep -v grep | grep 'eventMessage CONTAINS "GVA"' | awk '{print $1}')
+              if [[ "${string1}" = "${string2}" ]]; then ServPID="${string1}"; else ServPID=$(echo ${string1} ${string2} | tr ' ' '\n' | sort | uniq -u ); fi
+              CHECK_DECODER
            else
                 printf '\n   No installation files found. Put them in the installer tools folder      \n'
                 printf '\n'
@@ -302,10 +311,11 @@ if [[ $inputs = 4 ]]; then
     CLEAR_PLACE
 fi
 
-if [[ $inputs = 5 ]]; then open -a "Terminal" tools/DebugWindowMode; fi
+if [[ $inputs = 5 ]]; then open -a "Terminal" tools/DebugWindowMode; LogPID=$(ps xo pid,tty,command | grep -v grep | grep DebugWindowMode | awk '{print $NR}'); fi
 
-if [[ $inputs = 6 ]]; then 
+if [[ $inputs = 6 ]]; then
     kill $(ps  | grep -v grep | grep DebugWindowMode | rev | awk '{print $NF}' | rev) 2>/dev/null
+    KILL_LOG_STREAM
     osascript -e 'tell application "Terminal" to close (every window whose name contains "DebugWindowMode")' &
     CHECK_AppleGVADetector
     if [[ $rs_lan = "не установлен" ]] || [[ $rs_lan = "not installed" ]]; then 
