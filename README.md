@@ -8,3 +8,6 @@ Starts debugging AppleGVA and shows which decoder GPU is in use while video deco
 5) Creates and removes GVA debug window
 6) Russian or English with autodetect. 
 7) Best for Mac OS 10.13.6+
+
+![Theme customizable GUI](https://github.com/Andrej-Antipov/AppleGVA-Debug-Checker/blob/master/screenshots/1.png)
+![Theme customizable GUI](https://github.com/Andrej-Antipov/AppleGVA-Debug-Checker/blob/master/screenshots/2.png)
